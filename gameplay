@@ -1,0 +1,703 @@
+import pygame
+import random
+vec = pygame.math.Vector2
+
+# Sets size and framerate of window
+pygame.init()
+WIDTH = 800
+HEIGHT = 600
+FPS = 60
+
+# Creates window
+pygame.init()
+pygame.mixer.init()  
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Gameplay")
+clock = pygame.time.Clock()
+
+#Global colour variables declared
+BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+MAROON = (137, 37, 33)
+CYAN = (0,255,255)
+ORANGE = (255,165,0)
+GOLD = (218,165,32)
+OCEANBLUE = (35,152,164)
+PURPLE = (30,12,110)
+
+GRAVITY = 30
+
+# Class for what the sprite will look like
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 50))
+        self.image.fill(BLUE)
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+
+        # Declares variables for player movement function
+        self.movex = 0  # move along X
+        self.movey = 0  # move along Y
+        self.frame = 0  # count frames
+        
+        # Sets the initial fall count.
+        self.fall_count = 0
+        
+        # Sets the initial health count of the sprite.
+        self.health = 100
+        
+        # Weapon
+        self.weapon = None
+
+        ## ----------------------------- ##
+        
+        ##  -- Double jump variables --
+
+        # Track whether the player is currently jumping
+        self.jumping = False  
+
+        # Number of jumps remaining (including double jump)  
+        self.jumps_remaining = 2   
+
+        ## ----------------------------- ##
+
+    # Method to reset player attributes
+    def reset(self):
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+        self.health = 100
+        self.weapon = None
+        self.jumps_remaining = 2
+        self.fall_count = 0
+
+
+
+
+    def movement(self, x, y):
+        self.movex += x
+        self.movey += y
+
+    # Function created to handle jumping
+    def jump(self):
+        if not self.jumping or self.jumps_remaining > 0:
+            self.movey = -12.5  # Set upward movement
+            self.jumping = True
+            self.jumps_remaining -= 1
+
+    def update(self):
+        # Updates sprite position for x movement and collision
+        if not self.collide_with_enemy('x'):  # Check for collision with enemy
+            self.rect.x += self.movex
+            self.collide_with_platforms('x')
+        
+        # Updates sprite position for y movement and collision
+        if not self.collide_with_enemy('y'):  # Check for collision with enemy
+            self.rect.y += self.movey
+            self.collide_with_platforms('y')
+
+        # Update weapon position relative to player's position
+        if self.weapon is not None:
+            weapon_offset = vec(20, 0)
+            weapon_pos = self.rect.center + weapon_offset
+            self.weapon.rect.center = weapon_pos
+
+
+        # Applies gravity when not jumping or in a falling state.
+        if not self.jumping:
+            self.movey = GRAVITY
+        else:
+            # Reset fall count if jumping
+            self.fall_count = 0  
+
+        # Check if player is on the ground
+        if self.rect.bottom >= HEIGHT:
+            self.jumping = False
+            # Reset jumps when on the ground
+            self.jumps_remaining = 2  
+       
+        # Stops movement as soon as user lets go of key
+        self.movex = 0
+
+        # This was added to stop this from interfering with jumping
+        if not self.jumping:
+            self.movey = 0
+        
+        
+        
+                    
+                
+            
+
+    
+    #handles player collisions with enemy
+    def collide_with_enemy(self, dir):
+        # Handles collisions with the enemy
+        if dir == 'x' or dir == 'y':
+            if pygame.sprite.spritecollide(self, enemy_sprites, False):
+                # If collision with enemy occurs, decrease player's health
+                self.health -= 0.5
+            
+
+    def collide_with_platforms(self, dir):
+        # Handles collisions in x direction
+        if dir == 'x':
+            for platform in platforms:
+                if pygame.sprite.collide_rect(self, platform):
+                    if self.movex > 0:
+                        self.rect.right = platform.rect.left
+                    elif self.movex < 0:
+                        self.rect.left = platform.rect.right
+        
+        # Handles collisions in y direction
+        elif dir == 'y':
+            for platform in platforms:
+                if pygame.sprite.collide_rect(self, platform):
+                    if self.movey > 0:
+                        self.rect.bottom = platform.rect.top
+
+                        # Reset jumping when landing on a platform
+                        self.jumping = False
+                          
+                        # Reset jumps when landing on a platform
+                        self.jumps_remaining = 2  
+                        self.fall_count = 0
+                    
+                    elif self.movey < 0:
+                        self.rect.top = platform.rect.bottom
+
+    def render_weapon(self, screen):
+        # Render the weapon onto the screen
+        if self.weapon is not None:
+            screen.blit(self.weapon.image, self.weapon.rect)
+
+
+def gravity(player, fps):
+    ## GRAVITY
+    player.movey += max(1, (player.fall_count / fps) * GRAVITY)
+    player.fall_count += 1
+
+# Function to draw the health bar
+def draw_health_bar(surface, x, y, width, height, health):
+    outline_rect = pygame.Rect(x, y, width, height)
+    fill_rect = pygame.Rect(x, y, width * (health / 100), height)
+    pygame.draw.rect(surface, MAROON, fill_rect)
+    pygame.draw.rect(surface, WHITE, outline_rect, 2)
+
+#Function to output game over message when user dies
+def game_over_popup():
+    font = pygame.font.SysFont("Courier", 64)
+    text = font.render("GAME OVER", True, RED)
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+
+    # Display countdown popup
+    countdown = 3 
+    countdown_font = pygame.font.SysFont("Courier", 32)
+    
+    #While loop iterates through each second
+    while countdown > 0:
+        
+        screen.blit(text, text_rect)
+
+        countdown_text = countdown_font.render(f"Restarting in {countdown}...", True, RED)
+        countdown_text_rect = countdown_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
+
+        #prevents numbers from overlapping each other 
+        pygame.draw.rect(screen, BLACK, countdown_text_rect)
+
+        screen.blit(countdown_text, countdown_text_rect)
+        pygame.display.flip()
+
+        #real-time between each second
+        pygame.time.wait(1000)  
+        countdown -= 1
+      
+        
+
+
+# Class for what the platforms will look like
+class Platform(pygame.sprite.Sprite):
+    def __init__(self, x, y, w, h):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((w, h))
+        self.image.fill(GREEN)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+
+#Class for what the weapon, gun, will look like
+class Weapon(pygame.sprite.Sprite):
+    #creates the weapon
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((20, 10))
+        self.image.fill(YELLOW)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.is_picked_up = False
+
+    #Function to allow the sprite to pick weapon up from the platform.
+    def update(self):
+        if not self.is_picked_up:
+            # Check if the player picks up the weapon
+            if pygame.sprite.collide_rect(self, player):
+                player.weapon = self
+                self.is_picked_up = True
+                # Makes weapon disappear
+                self.rect.center = (-100, -100)  
+
+#Class for what the bullet for the gun will look like
+class Bullet(pygame.sprite.Sprite):
+    #creates the bullet
+    def __init__(self, x, y, direction):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((5, 5))
+        self.image.fill(WHITE)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
+
+    #Function to direct where the bullet will go
+    def update(self):
+        # Move bullet in the specified direction
+        self.rect.x += self.direction[0]
+        self.rect.y += self.direction[1]
+
+        # Removes the bullet if it leaves the window
+        if self.rect.x < 0 or self.rect.x > WIDTH  or self.rect.y < 0 or self.rect.y > HEIGHT:
+            self.kill()
+
+
+
+#class created for what the enemy will look like.
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, platform):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 50))
+        self.image.fill(RED)  
+        self.rect = self.image.get_rect()
+
+        # Adjusts position of the enemy sprite (temporary for now)
+        self.rect.left = platform.rect.right - 3000  
+        self.rect.bottom = platform.rect.top
+
+        # Initial health of the enemy
+        self.health = 100
+
+    # Function to handle collision with bullets
+    def collide_with_bullet(self):
+        hits = pygame.sprite.spritecollide(self, bullets, True)
+        for bullet in hits:
+            # Decrease enemy health when hit by a bullet
+            self.health -= 15
+            if self.health <= 0:
+                # Makes enemy sprite disappear once they lost all health.
+                self.kill()
+
+    def collide_with_platforms(self, dir):
+    # Handles collisions in x direction
+        if dir == 'x':
+            for platform in platforms:
+                if pygame.sprite.collide_rect(self, platform):
+                    if self.rect.x < platform.rect.x:
+                        self.rect.right = platform.rect.left
+                    else:
+                        self.rect.left = platform.rect.right
+        
+        # Handles collisions in y direction
+        elif dir == 'y':
+            for platform in platforms:
+                if pygame.sprite.collide_rect(self, platform):
+                    if self.rect.y < platform.rect.y:
+                        self.rect.bottom = platform.rect.top
+                    else:
+                        self.rect.top = platform.rect.bottom
+
+    def update(self):
+            # Apply gravity to the enemy sprite
+            self.movey = GRAVITY
+            
+            #Updates enemy position and handle collisions with platforms
+            self.rect.y += self.movey
+            self.collide_with_platforms('y')
+            self.collide_with_platforms('x')
+           
+            # Handle collision with bullets
+            self.collide_with_bullet()
+
+        
+
+#Class declared for how the healthpack will function
+class HealthPack(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((20, 20))
+        self.image.fill(CYAN)  
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+
+    def update(self):
+        #Checks for any collision with health packs
+        if pygame.sprite.spritecollide(player, health_packs, True):
+            #Increases the user's health when colliding with a health pack
+            player.health = min(100, player.health + 20)  
+
+#Function defined to spawn the healthpacks
+def spawn_health_packs(platforms):
+    health_packs = pygame.sprite.Group()
+    
+    for platform in platforms:
+        # Randomizes positions health packs spawn on each platform
+        x = random.randint(platform.rect.left + 20, platform.rect.right - 20)
+        y = platform.rect.top - 20  
+        health_pack = HealthPack(x, y)
+        health_packs.add(health_pack)
+
+    return health_packs
+
+#Door class created to complete the level
+class Door(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 100))
+        self.width = 50  
+        self.height = 100
+        self.image = pygame.Surface((self.width, self.height))
+        self.image.fill(OCEANBLUE)
+
+        #Adds border to the door
+        pygame.draw.rect(self.image, GOLD, [0, 0, self.width, self.height], 9)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+    def complete_level(self):
+        font = pygame.font.SysFont("Courier", 64)
+        text = font.render("Level Completed!", True, PURPLE )
+        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+
+        #Freezes screen
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+
+
+#### - - - DRAWING SPRITES - - - ####
+
+
+## PLAYER
+
+# Creates instance of the sprite
+all_sprites = pygame.sprite.Group()
+player = Player()
+all_sprites.add(player)
+
+
+## DOOR
+
+#Door will be placed at the end of the level
+door = Door(4600, HEIGHT - 175)
+#Adds the door to the group to be drawn onto the screen.
+all_sprites.add(door)
+
+
+
+## PLATFORMS
+
+# Adds platform to group
+platforms = pygame.sprite.Group()
+# Size and position of platform is set
+p1 = Platform(0, HEIGHT - 75, 3500, 75)
+
+p2 = Platform(WIDTH / 2 - 50, HEIGHT *3.2 / 4, 100, 20)
+
+p3 = Platform(WIDTH / 4 - 50, HEIGHT* 2.1 / 4, 100, 20)
+
+p4 = Platform(4500, HEIGHT - 75, 200, 75)
+
+# Defines the tile map
+# P represents a platform tile
+tile_map = [
+    "                            ",  
+    "                            ",
+    "                            ",
+    "                            ",
+    "                          ",
+    "                        ",
+    "                           ",
+    "                             ",
+    "                             ",
+    "                      PP  ",
+    "                                                              P",
+    "                             ",
+    "                 PP                       PP           P           PP",
+    "                                                                          PP",
+    "                             PP                  P          ",          
+    "                                                                                PP  ",
+    "             PP                   PP                                                 ",
+]
+
+#Defines the size of each tile
+TILE_WIDTH = 50
+TILE_HEIGHT = 20
+
+#Function to create platforms based on the tile map
+def create_platforms(tile_map):
+    platforms = pygame.sprite.Group()
+    for row_index, row in enumerate(tile_map):
+        for col_index, tile in enumerate(row):
+            if tile == "P":
+                x = col_index * TILE_WIDTH
+                y = row_index * TILE_HEIGHT
+                platform = Platform(x, y, TILE_WIDTH, TILE_HEIGHT)
+                platforms.add(platform)
+    return platforms
+
+# Create platforms from the tile map
+platforms = create_platforms(tile_map)
+all_sprites.add(platforms)
+
+# Platform is drawn onto screen
+platforms.add(p1,p2,p3,p4)
+all_sprites.add(p1,p2,p3,p4)
+
+
+## ENEMY
+
+# Creates a group for enemy sprites.
+enemy_sprites = pygame.sprite.Group()
+# Creates instance of the enemy sprite
+enemy = Enemy(p1)
+enemy_sprites.add(enemy)
+all_sprites.add(enemy)
+
+
+# Adds weapon to group
+weapon = Weapon(WIDTH / 4, HEIGHT - 100)
+# Weapon is drawn onto screen
+all_sprites.add(weapon)
+
+# List to hold bullet sprites
+bullets = pygame.sprite.Group()
+
+## HEALTHPACKS
+
+#Drawing healthpacks onto screen
+health_packs = spawn_health_packs([p1,p3])
+all_sprites.add(health_packs)
+
+#### - - - - - - - - ####
+
+
+# Declares a variable for no. of pixels the sprite will move
+steps = 20
+
+# Define a constant for the edge scroll threshold
+SCROLL_THRESHOLD = WIDTH // 4
+
+
+
+
+# Sets initial flag for the bullet firing.
+bullet_fired = False  
+
+#Function to create more enemies
+def generate_enemies(num_enemies, platform):
+    for _ in range(num_enemies):
+        enemy = Enemy(platform)
+        enemy.rect.left = random.randint(platform.rect.left, platform.rect.right)
+        enemy.rect.bottom = platform.rect.top
+        enemy_sprites.add(enemy)
+        all_sprites.add(enemy)
+
+#Generates a certain number of enemies on the platform.
+generate_enemies(2, p1) 
+
+#Loads the background image from the assets folder
+background_image = pygame.image.load("assets/Background/background.jpg") 
+#Scales the image to match the window size
+background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+
+# Main loop
+running = True
+completed_level = False
+
+#declares game over variable
+game_over = False
+
+#declares paused variable
+paused = False
+
+#PAUSE FUNCTION
+def pause():
+    font = pygame.font.SysFont("Courier", 64)
+    text = font.render("PAUSED", True, WHITE)
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+
+
+while running:
+    clock.tick(FPS)
+    all_sprites.update()
+
+
+    for event in pygame.event.get():
+        # Closes window
+        if event.type == pygame.QUIT:
+            running = False
+            
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                #Toggles the paused variable
+                paused = not paused
+
+        #iterates through the main loop as long as the Escape key has not been pressed
+        if not paused:
+         
+       # Check if the spacebar is pressed down
+         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not bullet_fired:
+            # Fire bullet if the player has a weapon and no bullet has been fired yet
+            if player.weapon is not None:
+                # Calculates the direction vector from player to cursor position
+                mouse_pos = pygame.mouse.get_pos()
+                direction = vec(mouse_pos[0] - player.rect.centerx, mouse_pos[1] - player.rect.centery).normalize()
+                
+                # Sets direction of the bullet
+                bullet = Bullet(player.rect.centerx, player.rect.centery, (direction.x * 5, direction.y * 5))
+                bullets.add(bullet) 
+                all_sprites.add(bullet)
+
+                # Set the flag to True since a bullet has been fired
+                bullet_fired = True  
+
+    if not paused:
+        # Prevents spamming of gun, user will have to click manually to fire 1 bullet.
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            bullet_fired = False
+
+        # Moves the sprite depending on the key the user has pressed.
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            player.movement(-steps, 0)
+        if keys[pygame.K_d]:
+            player.movement(steps, 0)
+        if pygame.KEYDOWN:
+            if keys[pygame.K_w]:
+                player.jump()
+
+        # Check if the player is at the edge of the window and scroll accordingly     
+        if player.rect.right >= WIDTH - SCROLL_THRESHOLD:
+            for sprite in all_sprites:
+                sprite.rect.x -= steps
+        elif player.rect.left <= SCROLL_THRESHOLD:
+            for sprite in all_sprites:
+                sprite.rect.x += steps
+
+        # Limit player movement within the window boundaries
+        player.rect.x = max(0, min(player.rect.x, WIDTH - player.rect.width))
+        player.rect.y = max(0, min(player.rect.y, HEIGHT - player.rect.height))
+
+        
+        # Speed at which enemy moves
+        ENEMY_SPEED = 5
+
+        # Move enemies towards the player if within a certain range
+        ENEMY_RANGE = 1000  
+
+        for enemy in enemy_sprites:
+            # Calculates the distance between enemy and player
+            distance_to_player = abs(enemy.rect.centerx - player.rect.centerx)
+            
+            #if statement used to stop enemy sprites from moving if user has died.
+            if player.health > 0:
+            
+                # Only move the enemy if it's within the range
+                if distance_to_player <= ENEMY_RANGE:
+                    if enemy.rect.x >= player.rect.x:
+                        enemy.rect.x -= ENEMY_SPEED
+                    elif enemy.rect.x < player.rect.x:
+                        enemy.rect.x += ENEMY_SPEED
+            # Collide with bullets regardless of distance
+            enemy.collide_with_bullet()
+            enemy.collide_with_platforms(dir)
+
+        # Checks if player has fallen to their death
+        if player.rect.bottom == HEIGHT:
+            # Set player's health to zero
+            player.health = 0 
+        
+        # Sprite dying
+        if player.health <= 0:
+            
+            #Prevents user from controlling sprite
+            player.movex = 0
+            player.movey = 0
+
+            #Drops gun on death
+            if player.weapon:
+                player.weapon.kill()
+                player.weapon = None
+
+            # Drop items at player's position
+            new_weapon = Weapon(player.rect.centerx, player.rect.centery)
+            all_sprites.add(new_weapon)
+
+            #Makes sprite disappear.
+            player.kill()
+
+            #Changes the flag to initiate game_over to true
+            game_over = True
+        
+        #Fills the window with background image
+        screen.blit(background_image, (0, 0))
+
+        player.update()  # Update player position
+        gravity(player, FPS)  # Update gravity
+
+        # Update and draw bullets
+        bullets.update()
+        bullets.draw(screen)
+
+        # Draw health bar
+        draw_health_bar(screen, WIDTH / 2 - 100, 10, 200, 20, player.health)
+
+        # Draws sprite onto screen
+        all_sprites.draw(screen)
+
+        #draws weapon onto sprite
+        player.render_weapon(screen)
+
+        #Iterates through collision between user and healthpack
+        health_packs.update()
+
+        #displays game over message when sprite dies
+        if game_over:
+            game_over_popup()
+            #stops the game after countdown
+            running = False
+        
+        if pygame.sprite.collide_rect(player, door) and not completed_level:
+            door.complete_level()
+            completed_level = True
+
+        
+            
+        pygame.display.flip()
+
+    #If the Escape key has been pressed, it brings up the pause menu.
+    else:
+        #Displays paused text and freezes game
+        pause()
+
+pygame.quit()

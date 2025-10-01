@@ -1,0 +1,144 @@
+import pygame
+import sys
+
+# https://www.pygame.org/docs/ref/rect.html
+#https://github.com/baraltech/Menu-System-PyGame/blob/main/main.py
+
+
+#initialising window and font
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("Main Menu")
+font = pygame.font.SysFont("Courier", 18)
+
+#initialising  the buttons
+class Button():
+  def __init__(self, image, x_pos, y_pos, text_input):
+    self.image = image
+    self.x_pos = x_pos
+    self.y_pos = y_pos
+    self.rect = self.image.get_rect(center=(self.x_pos, self.y_pos))
+    self.text_input = text_input
+    self.text = font.render(self.text_input, True, "white")
+    self.text_rect = self.text.get_rect(center=(self.x_pos, self.y_pos))
+    
+  def update(self):
+    screen.blit(self.image, self.rect)
+    screen.blit(self.text, self.text_rect)
+    
+#checks if the user has clicked the button
+  def checkForInput(self, position):
+    if position[0] in range(self.rect.left, self.rect.right) and position[1] in range(self.rect.top, self.rect.bottom):
+      return True
+    return False
+    
+# changes colour of button when hovering over it
+  def changeColor(self, position):
+    if position[0] in range(self.rect.left, self.rect.right) and position[1] in range(self.rect.top, self.rect.bottom):
+      self.text = font.render(self.text_input, True, "gray")
+    else:
+      self.text = font.render(self.text_input, True, "white")
+      
+#designing the buttons
+
+def main_menu():
+  while True:
+    color = (31,61,79)
+    screen.fill(color)
+    MENU_MOUSE_POS = pygame.mouse.get_pos()
+    MENU_TEXT = font.render("MAIN MENU", True, (255,255,255))
+    MENU_RECT = MENU_TEXT.get_rect(center=(400, 100))
+    
+    button_surface = pygame.image.load("assets/Background/button.png")
+    button_surface = pygame.transform.scale(button_surface, (200, 75))
+    
+    playbutton = Button(button_surface, 400, 200, "Start Game")
+    options_button = Button(button_surface, 400, 300, "Options")
+    quitbutton = Button(button_surface, 400, 400, "Quit")
+    
+    screen.blit(MENU_TEXT, MENU_RECT)
+
+    for button in [playbutton]:
+      button.changeColor(MENU_MOUSE_POS)
+      button.update()
+
+    for button in [options_button]:
+      button.changeColor(MENU_MOUSE_POS)
+      button.update()
+
+    for button in [quitbutton]:
+      button.changeColor(MENU_MOUSE_POS)
+      button.update()
+      
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+      if event.type == pygame.MOUSEBUTTONDOWN:
+        if playbutton.checkForInput(MENU_MOUSE_POS):
+          startgame()
+        elif options_button.checkForInput(MENU_MOUSE_POS):
+          options()
+        elif quitbutton.checkForInput(MENU_MOUSE_POS):
+          pygame.quit()
+          sys.exit()
+    pygame.display.update()
+
+#screen that is displayed when user clicks on start game
+def startgame():
+  while True:
+    startgamemousepos = pygame.mouse.get_pos()
+    color = (31,61,79)
+    screen.fill(color)
+    CC_SCREEN = font.render("Customise Character", True, "white")
+    CC_RECT = CC_SCREEN.get_rect(center=(400, 100))
+    screen.blit(CC_SCREEN, CC_RECT)
+
+    button_surface = pygame.image.load("assets/Background/button.png")
+    button_surface = pygame.transform.scale(button_surface, (150, 37.5))
+   
+    button_surface = pygame.transform.scale(button_surface, (150, 37.5))
+    BACK = Button(button_surface, 70, 400, "Back")
+
+    for button in [BACK]:
+      button.changeColor(startgamemousepos)
+      button.update()
+
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+      if event.type == pygame.MOUSEBUTTONDOWN:
+        if BACK.checkForInput(startgamemousepos):
+          main_menu()
+    pygame.display.update()
+
+def options():
+  while True:
+    options_mouse_pos = pygame.mouse.get_pos()
+    color = (31,61,79)
+    screen.fill(color)
+    optionstext = font.render("Options", True, "white")
+    optionstextrect = optionstext.get_rect(center=(400, 100))
+    screen.blit(optionstext, optionstextrect)
+
+    button_surface = pygame.image.load("assets/Background/button.png")
+    button_surface = pygame.transform.scale(button_surface, (150, 37.5))
+    BACK = Button(button_surface, 70, 400, "Back")
+
+    for button in [BACK]:
+      button.changeColor(options_mouse_pos)
+      button.update()
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+      if event.type == pygame.MOUSEBUTTONDOWN:
+        if BACK.checkForInput(options_mouse_pos):
+          main_menu()
+
+    pygame.display.update()    
+main_menu()
+
+
+
